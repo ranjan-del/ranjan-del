@@ -44,7 +44,11 @@ My work spans the AI application layer and the infrastructure layer beneath it.
 
 ---
 
-## Featured projects
+## Built from scratch
+
+Three systems of my own. Not a fork, not a tutorial build, not somebody else's idea rebuilt: for each
+one I started from a problem I ran into, wrote the problem statement and the architecture, and built
+against my own roadmap. The design decisions, the trade-offs and the phasing are mine to defend.
 
 ### RagFabric
 
@@ -107,6 +111,10 @@ that looks like for one machine.
 [github.com/ranjan-del/loomrun](https://github.com/ranjan-del/loomrun)
 
 ---
+
+## Major featured projects
+
+Substantial builds where the infrastructure around the model is the point.
 
 ### Agent Lab
 
@@ -178,7 +186,6 @@ tests in CI.
 | [prompt-engineering](https://github.com/ranjan-del/prompt-engineering) | A ten technique handbook | Same eight section treatment each: when it helps, when it is the wrong tool, before and after, failure modes. CI validates the structure |
 | [websocket-chat](https://github.com/ranjan-del/websocket-chat) | Multi room real time chat, as a study of the protocol | Fan out that survives a dead socket mid broadcast, reconnect with backoff, id based de-duplication on replay. FastAPI + Angular 17 |
 | [jwt-auth-lab](https://github.com/ranjan-del/jwt-auth-lab) | Token auth, the parts tutorials skip | Refresh rotation with reuse detection and token families, self sweeping revocation tables, shared in-flight refresh on the client |
-| [earthquake-visualizer-LLM-tool](https://github.com/ranjan-del/earthquake-visualizer-LLM-tool) | Live USGS earthquake map with proximity based risk banding | React, Vite, Tailwind, React Leaflet, Firebase Hosting |
 
 ---
 
