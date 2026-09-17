@@ -272,6 +272,12 @@ unless a real run produced it.
 <br/>
 
 <p align="center">
-  <img alt="GitHub stats" height="150" src="https://github-readme-stats.vercel.app/api?username=ranjan-del&show_icons=true&hide_border=true&include_all_commits=true&count_private=true&hide_title=true&theme=transparent">
-  <img alt="Top languages" height="150" src="https://github-readme-stats.vercel.app/api/top-langs/?username=ranjan-del&layout=compact&hide_border=true&langs_count=8&hide_title=true&theme=transparent">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=ranjan-del&theme=github_dark">
+    <img alt="GitHub stats" height="180" src="https://github-profile-summary-cards.vercel.app/api/cards/stats?username=ranjan-del&theme=github">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github-profile-summary-cards.vercel.app/api/cards/repos-per-language?username=ranjan-del&theme=github_dark">
+    <img alt="Top languages" height="180" src="https://github-profile-summary-cards.vercel.app/api/cards/repos-per-language?username=ranjan-del&theme=github">
+  </picture>
 </p>
