@@ -62,10 +62,11 @@ corpus, then serves the winner behind a query router.
 | | |
 |---|---|
 | **Engineering areas** | Traditional, Vectorless, Agentic and Graph retrieval · query routing · evaluation harness · ingestion and chunking · groups, grants and scoped API keys · OpenTelemetry tracing · cost and latency accounting · pluggable providers and stores |
-| **Stack** | Python 3.13 (uv) · FastAPI · PostgreSQL + pgvector · Redis workers · Chroma · Neo4j · Angular + Tailwind · Docker Compose · Apache 2.0 |
-| **Working today** | Offline single strategy assistant: ingestion for PDF/DOCX/PPTX/TXT/CSV with page numbers and character spans surviving into citations, hybrid retrieval with relevance floors, JWT auth and RBAC, Alembic migrations tested against real PostgreSQL, 390 Python tests plus 20 frontend tests. Phase 2 added shared ingestion, the access filter applied inside every store query, Redis backed index fan out, the CLI and tracing spans. Phase 3 added the Traditional RAG serving path: pgvector with an HNSW index and a pinned 768 dimension, Chroma as a second store, optional LLM and cross encoder reranking, a citation contract that checks every quote against its chunk before an answer is returned, streaming and non streaming `/v1/ask`, and a Python SDK. It answers with citations on a machine with no API key. |
-| **Not built yet** | Phases 4 to 10: BM25 lexical retrieval and fusion, the console, agentic and graph strategies, the adaptive router and the evaluation framework are on the roadmap, not in main. |
-| **Status** | **Actively building** · pre-alpha |
+| **Stack** | Python 3.13 (uv) · FastAPI · PostgreSQL + pgvector · Redis workers · Chroma · PostgreSQL recursive CTEs for the graph (no Neo4j) · Angular + Tailwind · Docker Compose · Apache 2.0 |
+| **Working today** | Offline single strategy assistant: ingestion for PDF/DOCX/PPTX/TXT/CSV with page numbers and character spans surviving into citations, hybrid retrieval with relevance floors, JWT auth and RBAC, Alembic migrations tested against real PostgreSQL, 390 Python tests plus 20 frontend tests. Phase 2 added shared ingestion, the access filter applied inside every store query, Redis backed index fan out, the CLI and tracing spans. Phase 3 added the Traditional RAG serving path: pgvector with an HNSW index and a pinned 768 dimension, Chroma as a second store, optional LLM and cross encoder reranking, a citation contract that checks every quote against its chunk before an answer is returned, streaming and non streaming `/v1/ask`, and a Python SDK. It answers with citations on a machine with no API key. Phase 4 added Vectorless RAG (BM25 and PostgreSQL full text search with fusion, exact phrase and identifier boosting) and console v1. Phase 5 added Agentic RAG as a plain Python state machine with a bounded repair loop, budgets and traces. Phase 6 added Graph RAG: entity extraction behind a confidence floor, reversible entity resolution, and an access checked traversal written as PostgreSQL recursive CTEs. |
+| **Not built yet** | Phases 7 to 10: the adaptive query router and terminal experience, the evaluation framework, the Compare and Trace UI with a TypeScript SDK, and production hardening. |
+| **Releases** | v0.1.0 (traditional and vectorless) · v0.2.0 (agentic) · v0.3.0 (graph) · v0.3.1 (PyPI packaging), all September 2026 |
+| **Status** | **Actively building** · alpha on PyPI |
 
 [github.com/ranjan-del/ragfabric](https://github.com/ranjan-del/ragfabric)
 
@@ -85,7 +86,8 @@ machine.
 | **Engineering areas** | CLI design · task state and a round trip safe Markdown parser · Claude Code plugin, slash command and SessionStart/Stop/PreCompact hooks · session linking · `git status --porcelain=v2` parsing for the pending view · OS file watching · low overhead desktop shell |
 | **Stack** | Node 22 with native TypeScript (no build step) · Tauri 2 · Svelte 5 · Vite · Vitest · `objc2` AppKit bindings for the macOS window level · GitHub Actions · MIT |
 | **Working today** | `@ledge/core`, the full `ledge` CLI (add, start, park, done, plan, note, when, today, link, sessions, memory, scan) and the Claude Code plugin with its three hooks. Tests run under Node's built in runner, plus a shell test that replays recorded hook payloads. |
-| **Not built yet** | The floating desktop panel is phase 1 and in progress. There is no release yet. |
+| **v0.2.0 (Sep 2026)** | The macOS desktop panel with an Assistant tab (a chat backed by one warm Claude Code process, turns routed to Haiku, Sonnet or Opus, and risky actions held for an inline Approve or Cancel), background capture, and a weekly to-do list stored as one Markdown file per ISO week with a month calendar. |
+| **Not built yet** | Open and Resume in Claude, Windows and Linux builds, and installers on GitHub Releases (v0.3.0), then PR status and calendar connectors (v0.4.0). |
 | **Status** | **Actively building** · pre-alpha |
 
 [github.com/ranjan-del/ledge](https://github.com/ranjan-del/ledge)
@@ -192,17 +194,59 @@ tests in CI.
 ## Open Source
 
 I contribute to open source AI and developer infrastructure, focusing on correctness, reliability,
-testing, security and maintainability.
+testing, security and maintainability. Each PR starts from a bug I reproduced on the project's own
+`main`, and carries a regression test or a measurement that shows the fix.
 
-| Project | Contribution | Technical area | PR |
+| Status | Count |
+|---|---|
+| ✅ Merged | 1 |
+| 🟡 Open, awaiting review | 2 |
+| ⚪ Closed without merge | 2 |
+
+### ✅ OpenAI Agents SDK, [#4941](https://github.com/openai/openai-agents-python/pull/4941): merged
+
+**fix(sandbox): keep UnixLocal workspace root removal off the event loop**
+
+| | |
+|---|---|
+| **Problem** | `UnixLocal` sandbox teardown called `shutil.rmtree` directly inside an `async def`, so the whole event loop froze for the full tree walk. Streamed responses, MCP sessions and tracing exporters on the same loop all stalled. Sibling operations in the same file already used the blocking IO helper. |
+| **Fix** | Run the removal through the existing `run_blocking_workspace_io` helper, so the tree walk happens on a worker thread and the loop keeps running. |
+| **Evidence** | A benchmark the maintainer asked for, comparing the released code path with this change on a real `npm install` workspace, with nothing patched or delayed. At 52,554 files the worst event loop stall fell from **2,276 ms to 1.0 ms**, and a 5 ms ticker got 476 of 474 due ticks instead of 1. Delete time rose 1 to 6 percent (the cost of the thread hop), and I reported that too. Also measured: cancellation mid removal and how it affects resume state serialisation. |
+| **Area** | asyncio correctness · blocking calls in async code · benchmarking |
+| **Outcome** | Approved and squash merged on 27 Sep 2026 into the `0.22.x` milestone. |
+
+### 🟡 LiteLLM, [#39894](https://github.com/BerriAI/litellm/pull/39894): open
+
+**test: drop the `__file__` relative `sys.path.insert` calls from the unit tests**
+
+| | |
+|---|---|
+| **Problem** | 42 unit tests still called `sys.path.insert` to add the repo root (test quality rule TQ003). pytest already puts the repo root on `sys.path` and `litellm` is installed, so the inserts were dead code. |
+| **Fix** | Removed the 41 dead call sites and their unused imports, kept the one legitimate case with a documented exemption, and ratcheted the TQ003 budget from 62 to 20 so new ones fail the gate. |
+| **Area** | Test hygiene at scale · quality gates |
+
+### 🟡 LiteLLM, [#39891](https://github.com/BerriAI/litellm/pull/39891): open
+
+**test(logging): undo the stdout patch inside the test so capsys never restores a closed stream**
+
+| | |
+|---|---|
+| **Problem** | A teardown ordering bug: `monkeypatch` restored `sys.stdout` to capsys's already closed stream, so the test errored on every run. |
+| **Fix** | Scoped the patch inside the test body, so it is undone before the fixtures are torn down. |
+| **Area** | pytest fixture lifecycle · test reliability |
+
+### ⚪ Gemini CLI: closed without merge
+
+Both PRs were closed automatically by the project's bot after 14 days, because the issues they fixed did
+not carry the `help wanted` label. No maintainer reviewed the code. The reproductions and the fixes are
+still readable on the PR pages.
+
+| PR | Problem found | Fix | Area |
 |---|---|---|---|
-| **Gemini CLI** | Closed a sibling prefix bypass in the `get_internal_docs` path guard: a `startsWith` check with no path component boundary let `../docs-private/secret.md` escape the docs root and be read back to the model | Path traversal, security boundary, regression tests | [#29249](https://github.com/google-gemini/gemini-cli/pull/29249) |
-| **Gemini CLI** | Made tool file writes atomic and serialised read-modify-write per path. Parallel tool execution let two `replace` calls on one file silently discard each other's edit while both reported success | Concurrency, atomic writes, lost update races (4 reproduced on main, one regression test each) | [#29244](https://github.com/google-gemini/gemini-cli/pull/29244) |
-| **LiteLLM** | Removed 41 dead `__file__`-relative `sys.path.insert` calls across 43 test modules and ratcheted the test quality budget from 62 to 20 | Test hygiene at scale, quality gates | [#39894](https://github.com/BerriAI/litellm/pull/39894) |
-| **LiteLLM** | Fixed a teardown ordering bug: `monkeypatch` restored `sys.stdout` to capsys's already closed stream, so the test errored on every run. Scoped the patch inside the test body instead | Fixture lifecycle, test reliability | [#39891](https://github.com/BerriAI/litellm/pull/39891) |
-| **OpenAI Agents SDK** | Moved the `UnixLocal` sandbox workspace root removal off the event loop. `shutil.rmtree` inside an `async def` held the loop for a full tree walk while sibling operations already used the blocking IO helper | asyncio correctness, blocking calls in async code | [#4941](https://github.com/openai/openai-agents-python/pull/4941) |
+| [#29249](https://github.com/google-gemini/gemini-cli/pull/29249) | The `get_internal_docs` path guard used a `startsWith` check with no path component boundary, so `../docs-private/secret.md` escaped the docs root and was read back to the model | Replaced the prefix check with the repo's existing `isSubpath()` helper (a `path.relative()` comparison that also handles case insensitive filesystems), plus a regression test that fails on `main` | Path traversal · security boundary |
+| [#29244](https://github.com/google-gemini/gemini-cli/pull/29244) | Parallel tool execution let two `replace` calls on one file silently discard each other's edit while both reported success | Atomic tool file writes, with read modify write serialised per path. Four races reproduced on `main`, with one regression test each | Concurrency · atomic writes · lost updates |
 
-All five were opened in September 2026 and are **under review, not yet merged**.
+All my pull requests: [github.com/pulls?q=author:ranjan-del](https://github.com/search?q=is%3Apr+author%3Aranjan-del&type=pullrequests)
 
 ---
 
