@@ -52,21 +52,19 @@ against my own roadmap. The design decisions, the trade-offs and the phasing are
 
 ### RagFabric
 
-> Self hosted, measurement first RAG platform. Four retrieval architectures behind one interface.
+> A self-hosted, measurement-first RAG platform: four retrieval architectures, one query router, and an evaluation workflow.
 
-**Why it exists.** Most RAG tools give you one retrieval approach and a chat box. RagFabric is built
-to answer a harder question: given *your* documents, *your* questions and *your* budget, which
-retrieval architecture should you run, and why? It measures accuracy, latency and cost on your own
-corpus, then serves the winner behind a query router.
+**Why it exists.** Most RAG tools offer one retrieval approach and a chat interface. RagFabric asks a more useful engineering question: given a corpus, question set and budget, which retrieval strategy performs best, and what are the trade-offs in answer quality, citations, latency and cost?
 
 | | |
 |---|---|
-| **Engineering areas** | Traditional, Vectorless, Agentic and Graph retrieval · query routing · evaluation harness · ingestion and chunking · groups, grants and scoped API keys · OpenTelemetry tracing · cost and latency accounting · pluggable providers and stores |
-| **Stack** | Python 3.13 (uv) · FastAPI · PostgreSQL + pgvector · Redis workers · Chroma · PostgreSQL recursive CTEs for the graph (no Neo4j) · Angular + Tailwind · Docker Compose · Apache 2.0 |
-| **Working today** | Offline single strategy assistant: ingestion for PDF/DOCX/PPTX/TXT/CSV with page numbers and character spans surviving into citations, hybrid retrieval with relevance floors, JWT auth and RBAC, Alembic migrations tested against real PostgreSQL, 390 Python tests plus 20 frontend tests. Phase 2 added shared ingestion, the access filter applied inside every store query, Redis backed index fan out, the CLI and tracing spans. Phase 3 added the Traditional RAG serving path: pgvector with an HNSW index and a pinned 768 dimension, Chroma as a second store, optional LLM and cross encoder reranking, a citation contract that checks every quote against its chunk before an answer is returned, streaming and non streaming `/v1/ask`, and a Python SDK. It answers with citations on a machine with no API key. Phase 4 added Vectorless RAG (BM25 and PostgreSQL full text search with fusion, exact phrase and identifier boosting) and console v1. Phase 5 added Agentic RAG as a plain Python state machine with a bounded repair loop, budgets and traces. Phase 6 added Graph RAG: entity extraction behind a confidence floor, reversible entity resolution, and an access checked traversal written as PostgreSQL recursive CTEs. |
-| **Not built yet** | Phases 7 to 10: the adaptive query router and terminal experience, the evaluation framework, the Compare and Trace UI with a TypeScript SDK, and production hardening. |
-| **Releases** | v0.1.0 (traditional and vectorless) · v0.2.0 (agentic) · v0.3.0 (graph) · v0.3.1 (PyPI packaging), all September 2026 |
-| **Status** | **Actively building** · alpha on PyPI |
+| **Engineering areas** | Traditional/vector retrieval · Vectorless (BM25 + PostgreSQL full-text search) · bounded Agentic retrieval · Graph retrieval with entity relationships · adaptive query routing and fallbacks · document ingestion and chunking · citation checks · access control · evaluation and benchmark tooling · tracing and cost/latency accounting |
+| **Stack** | Python 3.13 + uv · FastAPI · PostgreSQL + pgvector · PostgreSQL recursive CTEs for graph traversal · Chroma · Redis · Ollama and provider adapters · Angular + TypeScript · Docker Compose · OpenTelemetry · Apache-2.0 |
+| **Released** | v0.1.0–v0.4.0 on GitHub: ingestion and access controls, Traditional and Vectorless RAG, Agentic RAG, Graph RAG, and the adaptive query router. The current GitHub release is **v0.4.0**. |
+| **Implemented on `main`, validation pending** | Evaluation harness and benchmark reporting · dashboard and Ask/Compare/Trace UI · TypeScript SDK · hardening and request logging · watched-folder and Google Drive connectors · deployment guides. These are not all released or fully validated yet. |
+| **Measured behaviour** | On the documented 50-question MultiHop-RAG run with `llama3.2:3b`, Traditional scored 0.66 correctness, Vectorless 0.65 and Auto 0.66; LangChain scored 0.72 under its own answer prompt. RagFabric also refuses some answers when it cannot satisfy its citation contract. Results are small-sample, single-run evidence—not a claim that one framework or strategy is universally better. |
+| **Known limitations** | Graph RAG and Agentic RAG need further quality work on small local models. The access-control leak benchmark and several larger benchmark tiers are still pending. Hosted providers have not yet had a recorded live-key validation run; PyPI still has v0.3.1, so use the repository quickstart for the latest CLI. |
+| **Status** | **Active development · alpha**. See the [roadmap](https://github.com/ranjan-del/ragfabric/blob/main/ROADMAP.md) for exact release and validation status. |
 
 [github.com/ranjan-del/ragfabric](https://github.com/ranjan-del/ragfabric)
 
